@@ -43,6 +43,14 @@ body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,
       <input id="epgUrl" class="input" style="margin-top:8px" placeholder="https://example.com/epg.xml">
       <button class="btn btn-primary" style="width:100%;margin-top:20px;height:50px;font-size:16px" onclick="loadM3U()">▶ Load Playlist & Play</button>
       <button class="btn" style="width:100%;margin-top:10px" onclick="useDemo()">Use Demo Channels (Fox News etc)</button>
+    <div style="margin-top:14px;padding:12px;background:#111;border-radius:10px;border:1px solid rgba(255,255,255,0.06)">
+      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px">OR upload your M3U file directly (bypasses CORS block):</div>
+      <input type="file" id="m3uFile" accept=".m3u,.m3u8,.txt" style="width:100%;color:#fff;font-size:12px" onchange="loadM3UFile(event)">
+      <textarea id="m3uText" placeholder="Or paste M3U content here..." style="width:100%;height:80px;margin-top:8px;background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;padding:8px;font-size:11px;font-family:monospace"></textarea>
+      <button class="btn" style="width:100%;margin-top:8px;height:36px" onclick="loadFromTextarea()">Load from Pasted Text</button>
+      <div id="loadStatus" style="font-size:11px;color:#00a8ff;margin-top:8px"></div>
+    </div>
+
     </div>
     <div id="xtreamPanel" style="display:none">
       <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Server URL</label>
@@ -141,6 +149,10 @@ async function loadM3U(){
 }
 
 function parseM3U(txt){
+ console.log('M3U length', txt.length);
+ const status=document.getElementById('loadStatus');
+ if(status) status.textContent='Parsing '+(txt.length/1000).toFixed(1)+'KB...';
+
  const lines=txt.split('\n');
  let cur={};
  const out=[];
@@ -159,7 +171,13 @@ function parseM3U(txt){
    cur={};
   }
  }
- if(out.length>0) channels=out;
+ if(out.length>0){ channels=out; 
+   const status=document.getElementById('loadStatus');
+   if(status) status.textContent='Found '+out.length+' channels! Loading player...';
+ } else {
+   alert('M3U parsed but found 0 channels. File may be wrong format. First 200 chars:\n'+txt.substring(0,200));
+ }
+
 }
 
 async function loginXtream(){
