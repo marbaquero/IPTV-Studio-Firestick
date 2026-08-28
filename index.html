@@ -238,6 +238,33 @@ async function loadM3UProxy(m3uUrl){
   throw new Error('All proxies failed. Last: '+lastErr+' - Try downloading the file manually and using Upload.');
 }
 
+
+async function tryLoadLocalPlaylist(){
+  const statusEl = document.getElementById('loadStatus');
+  try{
+    const r = await fetch('./playlist.m3u', {cache:'no-store'});
+    if(r.ok){
+      const txt = await r.text();
+      if(txt.includes('#EXTM3U')){
+        if(statusEl) statusEl.textContent = 'Found playlist.m3u in repo ('+(txt.length/1000).toFixed(1)+'KB) - loading...';
+        parseM3U(txt);
+        afterLoad();
+        return true;
+      }
+    }
+  }catch(e){ console.log('no local playlist.m3u', e); }
+  return false;
+}
+// Auto try on page load
+window.addEventListener('load', async ()=>{
+  // if channels already saved, skip
+  try{
+    const saved = localStorage.getItem('ftv_channels');
+    if(saved && JSON.parse(saved).length>10) return;
+  }catch{}
+  await tryLoadLocalPlaylist();
+});
+
 function afterLoad(){
  document.getElementById('loginScreen').style.display='none';
  document.getElementById('mainApp').style.display='flex';
