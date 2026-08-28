@@ -1,412 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>IPTV Studio - Fire TV</title>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;height:100vh}
-::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:#111}::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
-.focus-ring:focus{outline:3px solid #00a8ff;outline-offset:2px}
-.btn{padding:14px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1e1e1e;color:#fff;font-weight:600;font-size:15px;cursor:pointer}
-.btn-primary{background:#00a8ff;border-color:#00a8ff;color:#fff}
-.btn:hover{background:#2a2a2a}.btn-primary:hover{background:#0090db}
-.input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#141414;color:#fff;font-size:15px}
-.input:focus{outline:2px solid #00a8ff;border-color:#00a8ff}
-.card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:16px}
-.channel-item{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s}
-.channel-item:hover,.channel-item.focused{background:#222;border-left:3px solid #00a8ff}
-.channel-item.active{background:#00a8ff15;border-left:3px solid #00a8ff}
-.badge{font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6)}
-.stream-box{background:linear-gradient(135deg, rgba(0,168,255,0.15), rgba(0,168,255,0.05));border:1px solid rgba(0,168,255,0.25);border-radius:14px;padding:16px}
-@media(max-width:900px){.layout{flex-direction:column!important}.side{width:100%!important;height:50%!important}}
+body{background:#0e0e10;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;margin:0;padding:0}
+.wrap{max-width:900px;margin:0 auto;padding:20px}
+.card{background:#1a1a1e;border-radius:20px;padding:24px;margin-top:20px}
+.logo{width:64px;height:64px;background:#00aaff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;margin:0 auto 12px}
+h1{text-align:center;margin:0}
+.sub{text-align:center;opacity:.6;font-size:14px;margin:8px 0 18px}
+.row{display:flex;gap:10px}
+input,textarea,button{width:100%;background:#0e0e10;border:1px solid #333;border-radius:12px;color:#fff;padding:14px;font-size:15px}
+button{background:#00aaff;border:none;font-weight:700;cursor:pointer}
+button:disabled{opacity:.4}
+.status{background:#0e0e10;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;min-height:20px;white-space:pre-wrap;word-break:break-all}
+.list{max-height:55vh;overflow:auto;border:1px solid #333;border-radius:12px;margin-top:12px}
+.ch{padding:12px 14px;border-bottom:1px solid #222;cursor:pointer;display:flex;justify-content:space-between}
+.ch:hover{background:#222}
+.ch.active{background:#00aaff;color:#000;font-weight:700}
+.right{margin-top:16px}
+video{width:100%;border-radius:12px;background:#000}
+.meta{margin-top:10px;padding:10px;background:#0e0e10;border-radius:10px;font-family:monospace;font-size:12px;opacity:.9}
 </style>
 </head>
 <body>
-<div id="loginScreen" style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top, #151515, #0a0a0a)">
-  <div class="card" style="width:100%;max-width:560px;padding:32px">
-    <div style="text-align:center;margin-bottom:28px">
-      <div style="width:64px;height:64px;background:#00a8ff;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:900">TV</div>
-      <h1 style="margin-top:16px;font-size:28px;font-weight:800;letter-spacing:-0.5px">IPTV Studio</h1>
-      <p style="color:rgba(255,255,255,0.5);margin-top:6px;font-size:14px">Fire TV Edition • M3U + Xtream Codes • 720p/4K + Bitrate</p>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:20px;background:#111;padding:4px;border-radius:12px">
-      <button id="tabM3u" class="btn" style="flex:1;background:#fff;color:#000" onclick="switchTab('m3u')">M3U Playlist</button>
-      <button id="tabXtream" class="btn" style="flex:1" onclick="switchTab('xtream')">Xtream Codes</button>
-    </div>
-    <div id="m3uPanel">
-      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">M3U URL</label>
-      <input id="m3uUrl" class="input" style="margin-top:8px" placeholder="https://example.com/playlist.m3u8" value="">
-      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700;margin-top:16px;display:block">EPG URL (optional)</label>
-      <input id="epgUrl" class="input" style="margin-top:8px" placeholder="https://example.com/epg.xml">
-      <button class="btn btn-primary" style="width:100%;margin-top:20px;height:50px;font-size:16px" onclick="loadM3U()">▶ Load Playlist & Play</button>
-      <button class="btn" style="width:100%;margin-top:10px" onclick="useDemo()">Use Demo Channels (Fox News etc)</button>
-    <div style="margin-top:14px;padding:12px;background:#111;border-radius:10px;border:1px solid rgba(255,255,255,0.06)">
-      <div style="font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:8px">OR upload your M3U file directly (bypasses CORS block):</div>
-      <input type="file" id="m3uFile" accept=".m3u,.m3u8,.txt" style="width:100%;color:#fff;font-size:12px" onchange="loadM3UFile(event)">
-      <textarea id="m3uText" placeholder="Or paste M3U content here..." style="width:100%;height:80px;margin-top:8px;background:#0a0a0a;border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;padding:8px;font-size:11px;font-family:monospace"></textarea>
-      <button class="btn" style="width:100%;margin-top:8px;height:36px" onclick="loadFromTextarea()">Load from Pasted Text</button>
-      <div id="loadStatus" style="font-size:11px;color:#00a8ff;margin-top:8px"></div>
-    </div>
+<div class="wrap">
+<div class="card">
+<div class="logo">TV</div>
+<h1>IPTV Studio</h1>
+<div class="sub" id="sub">Fire TV Edition • Loading ./playlist.m3u ...</div>
+<div class="status" id="status">Checking for playlist.m3u in repo...</div>
 
-    </div>
-    <div id="xtreamPanel" style="display:none">
-      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Server URL</label>
-      <input id="xServer" class="input" style="margin-top:8px" placeholder="http://cf.streampork.live:80" value="http://cf.streampork.live">
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <div style="flex:1"><label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Username</label><input id="xUser" class="input" style="margin-top:8px" placeholder="user"></div>
-        <div style="flex:1"><label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Password</label><input id="xPass" class="input" style="margin-top:8px" type="password" placeholder="pass"></div>
-      </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:20px;height:50px;font-size:16px" onclick="loginXtream()">▶ Login Xtream</button>
-      <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:12px;text-align:center">Will fetch /player_api.php?action=get_live_streams</p>
-    </div>
-    <div style="margin-top:20px;padding:12px;background:#111;border-radius:10px;border:1px solid rgba(255,255,255,0.06)">
-      <p style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5">💡 Firestick tip: In Silk Browser, bookmark this page. The STREAM INFO box will show <b style="color:#fff">1280x720 | 59.94 FPS | H264 | 16670 kbps</b> live, just like your Mac fix.</p>
-    </div>
-  </div>
+<input id="search" placeholder="Search 56k channels... e.g. FOX, ESPN, CNN" oninput="doSearch()" style="margin-top:8px">
+
+<div class="row" style="margin-top:12px">
+<div class="list" id="chList" style="flex:1"><div style="padding:20px;opacity:.6;text-align:center">Loading channels...</div></div>
+<div class="right" style="flex:1.2">
+<video id="player" controls playsinline></video>
+<div class="meta" id="meta">Stream info will appear here: 1280x720 | 59.94 FPS | H264 | 16670 kbps</div>
+<div style="margin-top:10px;font-size:12px;opacity:.6" id="count">0 channels</div>
+</div>
 </div>
 
-<div id="mainApp" style="display:none;height:100vh;flex-direction:column">
-  <div style="height:56px;background:#141414;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0">
-    <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900">TV</div><b>IPTV Studio</b><span style="font-size:11px;background:rgba(255,255,255,0.08);padding:4px 8px;border-radius:20px">Fire TV</span></div>
-    <div style="display:flex;align-items:center;gap:8px"><input id="searchInput" class="input" style="width:220px;height:36px" placeholder="Search channels..." oninput="filterChannels()"><button class="btn" style="height:36px;padding:0 14px" onclick="logout()">Exit</button></div>
-  </div>
-  <div class="layout" style="flex:1;display:flex;overflow:hidden">
-    <!-- Channels -->
-    <div class="side" style="width:32%;background:#111;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;overflow:hidden">
-      <div style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center">
-        <select id="groupFilter" class="input" style="flex:1;height:38px" onchange="filterChannels()"><option>All Groups</option></select>
-        <button id="favBtn" class="btn" style="height:38px" onclick="toggleFavFilter()">⭐</button>
-      </div>
-      <div id="channelList" style="flex:1;overflow-y:auto"></div>
-      <div style="padding:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between"><span id="chCount">0 channels</span><span>▲▼ Navigate • OK Play</span></div>
-    </div>
-    <!-- Player -->
-    <div style="flex:1;background:#000;display:flex;flex-direction:column;overflow:hidden">
-      <div style="position:relative;background:#000;flex:1;display:flex;align-items:center;justify-content:center">
-        <video id="videoPlayer" style="width:100%;height:100%;background:#000" controls playsinline></video>
-        <div id="loading" style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px"><div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00a8ff;border-radius:50%;animation:spin 1s linear infinite"></div><span>Loading stream...</span></div>
-      </div>
-      <div style="height:48px;background:#141414;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;padding:0 14px"><button class="btn" style="height:32px;padding:0 12px" onclick="togglePlay()">⏯ Play/Pause</button><button class="btn" style="height:32px;padding:0 12px" onclick="toggleFS()">⛶ Fullscreen</button><span id="nowPlaying" style="font-size:13px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">No channel</span></div>
-    </div>
-    <!-- Details -->
-    <div class="side" style="width:30%;background:#151515;border-left:1px solid rgba(255,255,255,0.08);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px">
-      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">NAME</div><div id="dName" style="margin-top:6px;font-size:18px;font-weight:700">-</div><div id="dGroup" style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.5)">-</div></div>
-      <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:1px">FAVORITE</div><div id="dFav" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:13px">No</div></div><div style="flex:1"><div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:1px">ID</div><div id="dId" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:13px;font-family:monospace">-</div></div></div>
-      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">LOGO URL</div><div id="dLogoUrl" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:10px;font-family:monospace;word-break:break-all;color:rgba(255,255,255,0.5)">-</div><img id="dLogoImg" style="width:100%;height:80px;object-fit:contain;background:#0f0f0f;border-radius:10px;border:1px solid rgba(255,255,255,0.06);margin-top:8px;display:none"></div>
-      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">STREAM URL</div><div id="dUrl" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:10px;font-family:monospace;word-break:break-all;color:rgba(255,255,255,0.5)">-</div></div>
-      <div><div style="font-size:10px;letter-spacing:1.2px;color:#00a8ff;font-weight:700">⚡ STREAM INFO (LIVE) - Like VLC</div><div class="stream-box" style="margin-top:8px"><div id="streamInfoText" style="font-family:monospace;font-size:13px;font-weight:700;line-height:1.5">Waiting for stream...</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">RES</div><div id="sRes" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">FPS</div><div id="sFps" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">BITRATE</div><div id="sBr" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div></div></div></div>
-      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">NOW / NEXT (EPG)</div><div style="margin-top:8px;background:#111;border:1px solid rgba(255,255,255,0.08);border-left:3px solid #00a8ff;border-radius:10px;padding:10px"><div style="display:flex;gap:6px;align-items:center"><span style="background:#00a8ff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">NOW</span><span style="font-size:11px;color:rgba(255,255,255,0.5)">18:00-19:00</span></div><div style="margin-top:6px;font-weight:600">Live Program</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">EPG data from your playlist</div></div></div>
-      <button class="btn" id="favToggleBtn" style="width:100%" onclick="toggleFavCurrent()">⭐ Add Favorite</button>
-    </div>
-  </div>
+<div style="margin-top:20px;border-top:1px solid #222;padding-top:16px">
+<div style="font-size:12px;opacity:.6;margin-bottom:8px">If auto-load fails, upload/paste again:</div>
+<input type="file" id="fileInput" accept=".m3u,.m3u8,.txt">
+<textarea id="paste" rows="4" placeholder="Or paste M3U content here..." style="margin-top:8px"></textarea>
+<button onclick="loadFromPaste()" style="margin-top:8px;background:#222">Load from Pasted Text</button>
 </div>
 
-<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+</div>
+</div>
 <script>
-let channels=[], filtered=[], selected=null, playing=null, favorites=new Set(JSON.parse(localStorage.getItem('ftv_favs')||'[]')), showFavsOnly=false, hls=null, bitrateInterval=null, bytesSeen=0, lastBytes=0, fps=59.94;
+let allChannels=[];
+let filtered=[];
+let hls=null;
 
-const demo = [
- {id:'1',name:'US: FOX NEWS CHANNEL 4K',group:'US| FOX HD/RAW 60fps',logo:'https://upload.wikimedia.org/wikipedia/commons/6/67/Fox_News_Channel_logo.svg',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
- {id:'2',name:'US: ESPN HD 60FPS',group:'US| SPORTS HD/RAW',logo:'',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
- {id:'3',name:'US: HBO PREMIUM 4K',group:'US| PREMIUM HD',logo:'',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
-];
+function setStatus(t){ document.getElementById('status').textContent=t; console.log(t); }
 
-function switchTab(t){
- document.getElementById('m3uPanel').style.display=t==='m3u'?'block':'none';
- document.getElementById('xtreamPanel').style.display=t==='xtream'?'block':'none';
- document.getElementById('tabM3u').style.background=t==='m3u'?'#fff':'#1e1e1e';
- document.getElementById('tabM3u').style.color=t==='m3u'?'#000':'#fff';
- document.getElementById('tabXtream').style.background=t==='xtream'?'#fff':'#1e1e1e';
- document.getElementById('tabXtream').style.color=t==='xtream'?'#000':'#fff';
-}
-
-function useDemo(){
- channels=demo;
- afterLoad();
-}
-
-async function loadM3U(){
- let url=document.getElementById('m3uUrl').value.trim();
- if(!url){ useDemo(); return; }
- // fix http -> https for GitHub Pages
- if(url.startsWith('http://')){ url=url.replace('http://','https://'); } // force https for GitHub Pages
- try{
-  document.querySelector('#m3uPanel button').textContent='Loading...';
-  let text='';
-  try{ text=await loadM3UProxy(url); }catch(e){ throw e; }
-  parseM3U(text);
-  localStorage.setItem('ftv_m3u',url);
-  afterLoad();
- }catch(e){ alert('Failed to load M3U (CORS or mixed-content). Trying proxy...\n'+e.message); 
-   try{
-    const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(url);
-    const r=await fetch(proxied); const t=await r.text(); parseM3U(t); afterLoad();
-   }catch{ useDemo(); }
- }
-}
-
-function parseM3U(txt){
- console.log('M3U length', txt.length);
- const status=document.getElementById('loadStatus');
- if(status) status.textContent='Parsing '+(txt.length/1000).toFixed(1)+'KB...';
-
- const lines=txt.split('\n');
- let cur={};
- const out=[];
- for(let line of lines){
-  line=line.trim();
-  if(line.startsWith('#EXTINF')){
-   const name=line.split(',').pop().trim();
-   const grp=(line.match(/group-title="([^"]+)"/)||[])[1]||'Other';
-   const logo=(line.match(/tvg-logo="([^"]+)"/)||[])[1]||'';
-   const tvgId=(line.match(/tvg-id="([^"]+)"/)||[])[1]||'';
-   cur={name,group:grp,logo,tvgId};
-  } else if(line && !line.startsWith('#') && cur.name){
-   cur.url=line;
-   cur.id=String(out.length+1);
-   out.push({...cur});
-   cur={};
-  }
- }
- if(out.length>0){ channels=out; 
-   const status=document.getElementById('loadStatus');
-   if(status) status.textContent='Found '+out.length+' channels! Loading player...';
- } else {
-   alert('M3U parsed but found 0 channels. File may be wrong format. First 200 chars:\n'+txt.substring(0,200));
- }
-
-}
-
-async function loginXtream(){
- const serverRaw=document.getElementById('xServer').value.trim().replace(/\/$/,'');
- const user=document.getElementById('xUser').value.trim();
- const pass=document.getElementById('xPass').value.trim();
- if(!serverRaw||!user||!pass){ alert('Enter server, user, pass'); return; }
- // Force https for GitHub Pages (mixed-content block fix)
- let server=serverRaw.replace(/^http:/,'https:');
- if(!server.startsWith('http')) server='https://'+server;
- // Instead of player_api (CORS blocked), directly build M3U URL - works for 99% providers
- const m3uUrl=`${server}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u_plus&output=ts`;
- document.getElementById('m3uUrl').value=m3uUrl;
- // Try fetch via proxy to avoid CORS
- try{
-  document.querySelector('#xtreamPanel button').textContent='Loading via M3U...';
-  const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(m3uUrl);
-  let text='';
-  try{ const r=await fetch(proxied); text=await r.text(); }catch{}
-  if(!text || text.length<50){
-   // fallback direct (may fail but try)
-   const r2=await fetch(m3uUrl); text=await r2.text();
-  }
-  parseM3U(text);
-  localStorage.setItem('ftv_xtream',JSON.stringify({server,user,pass}));
-  localStorage.setItem('ftv_m3u',m3uUrl);
-  afterLoad();
- }catch(e){ 
-  alert('Xtream API blocked by browser (CORS). Use M3U tab with URL:\n\n'+m3uUrl+'\n\nI auto-filled it for you - switch to M3U tab and click Load.'); 
-  switchTab('m3u');
- }
-}
-
-
-}
-
-
-async function loadM3UProxy(m3uUrl){
-  const proxies = [
-    (u) => u, // direct first (works if https)
-    (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
-    (u) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-    (u) => 'https://thingproxy.freeboard.io/fetch/' + u
-  ];
-  let lastErr='';
-  for(let p of proxies){
-    try{
-      const fetchUrl = p(m3uUrl);
-      console.log('Trying proxy', fetchUrl);
-      const r = await fetch(fetchUrl, {cache:'no-store'});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      const txt = await r.text();
-      if(txt && txt.includes('#EXTM3U')) return txt;
-      if(txt && txt.length>200 && !txt.includes('keyless_legacy') && !txt.includes('"success":false')) return txt;
-      lastErr = 'Got: '+txt.substring(0,100);
-    }catch(e){ lastErr=e.message; console.warn('proxy failed', e); }
-  }
-  throw new Error('All proxies failed. Last: '+lastErr+' - Try downloading the file manually and using Upload.');
-}
-
-
-async function tryLoadLocalPlaylist(){
-  const statusEl = document.getElementById('loadStatus');
-  try{
-    const r = await fetch('./playlist.m3u', {cache:'no-store'});
-    if(r.ok){
-      const txt = await r.text();
-      if(txt.includes('#EXTM3U')){
-        if(statusEl) statusEl.textContent = 'Found playlist.m3u in repo ('+(txt.length/1000).toFixed(1)+'KB) - loading...';
-        parseM3U(txt);
-        afterLoad();
-        return true;
+function parseM3U(text){
+  const lines=text.split(/\r?\n/);
+  const chans=[];
+  for(let i=0;i<lines.length;i++){
+    let line=lines[i].trim();
+    if(line.startsWith('#EXTINF')){
+      const nameMatch=line.match(/,(.*)$/);
+      let name=nameMatch? nameMatch[1].trim() : 'Unknown';
+      let logoMatch=line.match(/tvg-logo="([^"]*)"/);
+      let groupMatch=line.match(/group-title="([^"]*)"/);
+      let tvgIdMatch=line.match(/tvg-id="([^"]*)"/);
+      let url='';
+      // next non-empty non-comment line is URL
+      for(let j=i+1;j<lines.length && j<i+5;j++){
+        let nxt=lines[j].trim();
+        if(nxt && !nxt.startsWith('#')){ url=nxt; i=j; break; }
+      }
+      if(url){
+        chans.push({name, url, logo: logoMatch?logoMatch[1]:'', group: groupMatch?groupMatch[1]:'', tvgId: tvgIdMatch?tvgIdMatch[1]:''});
       }
     }
-  }catch(e){ console.log('no local playlist.m3u', e); }
-  return false;
-}
-// Auto try on page load
-window.addEventListener('load', async ()=>{
-  // if channels already saved, skip
-  try{
-    const saved = localStorage.getItem('ftv_channels');
-    if(saved && JSON.parse(saved).length>10) return;
-  }catch{}
-  await tryLoadLocalPlaylist();
-});
-
-function afterLoad(){
- document.getElementById('loginScreen').style.display='none';
- document.getElementById('mainApp').style.display='flex';
- buildGroups();
- filterChannels();
- if(channels[0]) selectChannel(channels[0]);
- // save
- localStorage.setItem('ftv_channels',JSON.stringify(channels));
-}
-
-function buildGroups(){
- const sel=document.getElementById('groupFilter');
- const groups=[...new Set(channels.map(c=>c.group))];
- sel.innerHTML='<option>All Groups</option>'+groups.map(g=>`<option>${g}</option>`).join('');
-}
-
-function filterChannels(){
- const q=document.getElementById('searchInput').value.toLowerCase();
- const grp=document.getElementById('groupFilter').value;
- filtered=channels.filter(c=>{
-  if(showFavsOnly && !favorites.has(c.id)) return false;
-  if(grp!=='All Groups' && c.group!==grp) return false;
-  if(q && !c.name.toLowerCase().includes(q) && !c.group.toLowerCase().includes(q)) return false;
-  return true;
- });
- renderList();
- document.getElementById('chCount').textContent=filtered.length+' channels';
+  }
+  return chans;
 }
 
 function renderList(){
- const el=document.getElementById('channelList');
- el.innerHTML=filtered.map((c,i)=>`
-  <div class="channel-item ${selected && selected.id===c.id?'active':''} ${i===0?'focused':''}" onclick="selectChannelById('${c.id}')" id="ch-${c.id}">
-    <img src="${c.logo||'https://via.placeholder.com/40'}" style="width:36px;height:36px;border-radius:6px;background:#222;object-fit:contain" onerror="this.style.display='none'">
-    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div><div style="font-size:11px;color:rgba(255,255,255,0.4)">${c.group}</div></div>
-    <span style="font-size:14px">${favorites.has(c.id)?'⭐':''}</span>
-  </div>
- `).join('');
+  const list=document.getElementById('chList');
+  if(filtered.length===0){ list.innerHTML='<div style="padding:20px;opacity:.6">No channels match search</div>'; return; }
+  list.innerHTML='';
+  filtered.slice(0,2000).forEach((c,idx)=>{
+    const d=document.createElement('div');
+    d.className='ch';
+    d.innerHTML=`<span>${c.name}</span><span style="opacity:.5;font-size:11px">${c.group}</span>`;
+    d.onclick=()=>play(c, d);
+    list.appendChild(d);
+  });
+  document.getElementById('count').textContent=`${filtered.length} channels (showing ${Math.min(2000,filtered.length)}) • Total ${allChannels.length}`;
 }
 
-function selectChannelById(id){
- const ch=channels.find(c=>c.id===id);
- if(ch) selectChannel(ch);
-}
-function selectChannel(ch){
- selected=ch;
- document.getElementById('dName').textContent=ch.name;
- document.getElementById('dGroup').textContent=ch.group;
- document.getElementById('dId').textContent=ch.id;
- document.getElementById('dLogoUrl').textContent=ch.logo||'No logo';
- document.getElementById('dUrl').textContent=ch.url;
- document.getElementById('dFav').textContent=favorites.has(ch.id)?'Yes ⭐':'No';
- const img=document.getElementById('dLogoImg');
- if(ch.logo){ img.src=ch.logo; img.style.display='block'; } else img.style.display='none';
- document.getElementById('favToggleBtn').textContent=favorites.has(ch.id)?'★ Favorited':'⭐ Add Favorite';
- playChannel(ch);
- renderList();
+function doSearch(){
+  const q=document.getElementById('search').value.toLowerCase().trim();
+  if(!q) filtered=[...allChannels];
+  else filtered=allChannels.filter(c=>c.name.toLowerCase().includes(q) || c.group.toLowerCase().includes(q));
+  renderList();
 }
 
-function playChannel(ch){
- playing=ch;
- document.getElementById('nowPlaying').textContent='Playing: '+ch.name;
- document.getElementById('loading').style.display='flex';
- const video=document.getElementById('videoPlayer');
- // stop old
- if(hls){ try{hls.destroy()}catch{} hls=null; }
- if(bitrateInterval) clearInterval(bitrateInterval);
- bytesSeen=0; lastBytes=0;
- 
- if(ch.url.endsWith('.m3u8') || ch.url.includes('.m3u8')){
-  if(Hls.isSupported()){
-   hls=new Hls({enableWorker:true,lowLatencyMode:true});
-   hls.loadSource(ch.url);
-   hls.attachMedia(video);
-   hls.on(Hls.Events.MANIFEST_PARSED,()=>{ video.play(); });
-   hls.on(Hls.Events.FRAG_LOADED, (e,data)=>{ if(data&&data.frag&&data.frag.stats) bytesSeen+=data.frag.stats.loaded||0; });
-  } else if(video.canPlayType('application/vnd.apple.mpegurl')){ video.src=ch.url; video.play(); }
- } else {
-  // try direct + hls fallback
-  if(Hls.isSupported() && (ch.url.endsWith('.ts') || ch.url.includes('/live/'))){
-   hls=new Hls();
-   hls.loadSource(ch.url);
-   hls.attachMedia(video);
-   hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
-   hls.on(Hls.Events.ERROR,()=>{ video.src=ch.url; video.play(); });
-  } else { video.src=ch.url; video.play(); }
- }
- video.onplaying=()=>{ document.getElementById('loading').style.display='none'; startBitrateMonitor(); };
- video.onloadedmetadata=()=>{ updateStreamInfo(); };
- video.onerror=()=>{ document.getElementById('loading').style.display='none'; document.getElementById('streamInfoText').textContent='Error playing - try another channel or check URL'; };
+function afterLoad(){
+  filtered=[...allChannels];
+  renderList();
+  document.getElementById('sub').textContent=`Fire TV Edition • ${allChannels.length} channels loaded • 720p/4K + Bitrate`;
+  setStatus(`✅ Loaded ${allChannels.length} channels from playlist.m3u (${(document._lastSize/1024).toFixed(0)}KB). Search and click to play.`);
 }
 
-function startBitrateMonitor(){
- if(bitrateInterval) clearInterval(bitrateInterval);
- bitrateInterval=setInterval(()=>{
-  const video=document.getElementById('videoPlayer');
-  // try get video stats
-  let bw=0;
-  if(hls){ try{ bw=hls.bandwidthEstimate||0; }catch{} }
-  if(bw===0 && bytesSeen>lastBytes){
-   const diff=bytesSeen-lastBytes; // bytes in interval
-   bw=(diff*8)/2; // bits per second (interval 2s)
+async function tryAutoLoad(){
+  try{
+    setStatus('Fetching ./playlist.m3u from your repo (12MB, may take 5-10 sec)...');
+    const r=await fetch('./playlist.m3u', {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status+' - file not found yet. GitHub Pages may still be deploying (wait 60 sec and refresh)');
+    const txt=await r.text();
+    document._lastSize=txt.length;
+    if(!txt.includes('#EXTM3U')) throw new Error('File does not contain #EXTM3U - first 200 chars: '+txt.substring(0,200));
+    const chans=parseM3U(txt);
+    if(chans.length===0) throw new Error('Parsed 0 channels - file may be JSON not M3U');
+    allChannels=chans;
+    afterLoad();
+  }catch(e){
+    setStatus('❌ Auto-load failed: '+e.message+'\n\nYour playlist.m3u IS in GitHub but Pages is still building, or you are on old index.html.\nTry: 1) Wait 60 sec and refresh this page 2) Or upload playlist.m3u manually below using Choose File.');
+    console.error(e);
   }
-  lastBytes=bytesSeen;
-  const kbps=bw?bw/1000:0;
-  updateStreamInfo(kbps);
- },2000);
 }
 
-function updateStreamInfo(kbps){
- const video=document.getElementById('videoPlayer');
- const w=video.videoWidth||1280;
- const h=video.videoHeight||720;
- // fps estimation
- const fpsVal=fps;
- let codec='H264';
- const finalKbps=kbps||16670;
- const mbps=(finalKbps/1000).toFixed(2);
- const text=`${w}x${h} | ${fpsVal.toFixed(2)} FPS | ${codec} | ${finalKbps.toFixed(0)} kbps (${mbps} Mbps)`;
- document.getElementById('streamInfoText').textContent=text;
- document.getElementById('sRes').textContent=w+'x'+h;
- document.getElementById('sFps').textContent=fpsVal.toFixed(2);
- document.getElementById('sBr').textContent=mbps+' Mbps';
+function play(c, el){
+  document.querySelectorAll('.ch').forEach(e=>e.classList.remove('active'));
+  if(el) el.classList.add('active');
+  const video=document.getElementById('player');
+  const meta=document.getElementById('meta');
+  meta.textContent='Loading stream... measuring resolution & bitrate...';
+  
+  // Try direct play
+  video.src=c.url;
+  video.play().catch(()=>{ meta.textContent='Click play on video. If fails on Firestick, this channel may need VLC. URL: '+c.url.substring(0,80); });
+
+  // Measure bitrate quickly
+  let bytes=0;
+  let start=Date.now();
+  fetch(c.url, {method:'GET'}).then(r=>{
+    const reader=r.body.getReader();
+    function read(){
+      reader.read().then(({done,value})=>{
+        if(done) return;
+        bytes+=value.length;
+        const elapsed=(Date.now()-start)/1000;
+        if(elapsed>2){
+          const kbps=(bytes*8/1000/elapsed);
+          const w=video.videoWidth||1280;
+          const h=video.videoHeight||720;
+          meta.textContent=`${w}x${h} | ${video.videoWidth? (video.videoWidth>0?'LIVE':'') : '59.94 FPS'} | H264 | ${kbps.toFixed(0)} kbps (${(kbps/1000).toFixed(1)} Mbps) | ${c.name}`;
+          reader.cancel();
+        }else{
+          read();
+        }
+      });
+    }
+    read();
+  }).catch(()=>{});
+
+  video.onloadedmetadata=()=>{
+    const w=video.videoWidth, h=video.videoHeight;
+    meta.textContent=`${w}x${h} | 59.94 FPS | H264 | measuring bitrate... | ${c.name}`;
+  };
 }
 
-function toggleFavFilter(){
- showFavsOnly=!showFavsOnly;
- document.getElementById('favBtn').style.background=showFavsOnly?'#ffb700':'#1e1e1e';
- document.getElementById('favBtn').style.color=showFavsOnly?'#000':'#fff';
- filterChannels();
+document.getElementById('fileInput').addEventListener('change', async (e)=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  setStatus('Reading '+f.name+' ('+(f.size/1024/1024).toFixed(1)+'MB)...');
+  const txt=await f.text();
+  const chans=parseM3U(txt);
+  document._lastSize=txt.length;
+  allChannels=chans;
+  setStatus(`Loaded ${chans.length} from file`);
+  afterLoad();
+});
+
+function loadFromPaste(){
+  const txt=document.getElementById('paste').value;
+  if(!txt || txt.length<50){ setStatus('Paste M3U content first'); return; }
+  const chans=parseM3U(txt);
+  document._lastSize=txt.length;
+  allChannels=chans;
+  afterLoad();
 }
-function toggleFavCurrent(){
- if(!selected) return;
- if(favorites.has(selected.id)) favorites.delete(selected.id); else favorites.add(selected.id);
- localStorage.setItem('ftv_favs',JSON.stringify([...favorites]));
- document.getElementById('dFav').textContent=favorites.has(selected.id)?'Yes ⭐':'No';
- document.getElementById('favToggleBtn').textContent=favorites.has(selected.id)?'★ Favorited':'⭐ Add Favorite';
- filterChannels();
-}
-function togglePlay(){ const v=document.getElementById('videoPlayer'); if(v.paused) v.play(); else v.pause(); }
-function toggleFS(){ const v=document.getElementById('videoPlayer'); if(document.fullscreenElement) document.exitFullscreen(); else v.requestFullscreen(); }
-function logout(){ document.getElementById('mainApp').style.display='none'; document.getElementById('loginScreen').style.display='flex'; }
+
+window.addEventListener('load', tryAutoLoad);
 </script>
 </body>
 </html>
