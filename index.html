@@ -125,7 +125,7 @@ async function tryAutoLoad(){
     document._lastSize=txt.length;
     const chans=parseM3U(txt);
     if(chans.length===0) throw new Error('Parsed 0 channels');
-    allChannels=chans;
+    allChannels=chans.map(ch=>{ ch.url=ch.url.replace('https://','http://').replace('.ts','.m3u8'); return ch; });
     afterLoad();
   }catch(e){
     setStatus('❌ Auto-load failed: '+e.message);
@@ -138,12 +138,16 @@ function play(c, el){
   const video=document.getElementById('player');
   const meta=document.getElementById('meta');
   const urlDisplay=document.getElementById('urlDisplay');
-  urlDisplay.textContent=c.url;
+  let fixedDisplay = c.url.replace('https://','http://').replace('.ts','.m3u8');
+  c.url = fixedDisplay;
+  urlDisplay.textContent=fixedDisplay;
   document.getElementById('currentName').textContent=c.name;
   meta.textContent='Trying to play... (If blocked on Mac, use Copy URL → VLC)';
   
   // Try multiple playback methods
-  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(c.url);
+  let fixedUrl = c.url.replace('https://','http://').replace('.ts','.m3u8');
+  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(fixedUrl);
+  c.url = fixedUrl; // use fixed for all attempts
   
   // Cleanup previous hls
   if(hls){ hls.destroy(); hls=null; }
