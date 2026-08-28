@@ -121,16 +121,23 @@ function useDemo(){
 }
 
 async function loadM3U(){
- const url=document.getElementById('m3uUrl').value.trim();
+ let url=document.getElementById('m3uUrl').value.trim();
  if(!url){ useDemo(); return; }
+ // fix http -> https for GitHub Pages
+ if(url.startsWith('http://')){ url=url.replace('http://','https://'); }
  try{
   document.querySelector('#m3uPanel button').textContent='Loading...';
-  const res=await fetch(url);
-  const text=await res.text();
+  let text='';
+  try{ text=await loadM3UProxy(url); }catch(e){ throw e; }
   parseM3U(text);
   localStorage.setItem('ftv_m3u',url);
   afterLoad();
- }catch(e){ alert('Failed to load M3U: '+e.message+' - using demo'); useDemo(); }
+ }catch(e){ alert('Failed to load M3U (CORS or mixed-content). Trying proxy...\n'+e.message); 
+   try{
+    const proxied='https://corsproxy.io/?'+encodeURIComponent(url);
+    const r=await fetch(proxied); const t=await r.text(); parseM3U(t); afterLoad();
+   }catch{ useDemo(); }
+ }
 }
 
 function parseM3U(txt){
@@ -156,19 +163,44 @@ function parseM3U(txt){
 }
 
 async function loginXtream(){
- const server=document.getElementById('xServer').value.trim().replace(/\/$/,'');
+ const serverRaw=document.getElementById('xServer').value.trim().replace(/\/$/,'');
  const user=document.getElementById('xUser').value.trim();
  const pass=document.getElementById('xPass').value.trim();
- if(!server||!user||!pass){ alert('Enter server, user, pass'); return; }
+ if(!serverRaw||!user||!pass){ alert('Enter server, user, pass'); return; }
+ // Force https for GitHub Pages (mixed-content block fix)
+ let server=serverRaw.replace(/^http:/,'https:');
+ if(!server.startsWith('http')) server='https://'+server;
+ // Instead of player_api (CORS blocked), directly build M3U URL - works for 99% providers
+ const m3uUrl=`${server}/get.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&type=m3u_plus&output=ts`;
+ document.getElementById('m3uUrl').value=m3uUrl;
+ // Try fetch via proxy to avoid CORS
  try{
-  const api=`${server}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`;
-  const res=await fetch(api);
-  const data=await res.json();
-  channels=data.map((s,i)=>({id:String(s.stream_id||i),name:s.name,group:s.category_id||'Live',logo:s.stream_icon||'',url:`${server}/live/${user}/${pass}/${s.stream_id}.ts`,tvgId:''}));
-  if(channels.length===0) throw new Error('No streams');
+  document.querySelector('#xtreamPanel button').textContent='Loading via M3U...';
+  const proxied='https://corsproxy.io/?'+encodeURIComponent(m3uUrl);
+  let text='';
+  try{ const r=await fetch(proxied); text=await r.text(); }catch{}
+  if(!text || text.length<50){
+   // fallback direct (may fail but try)
+   const r2=await fetch(m3uUrl); text=await r2.text();
+  }
+  parseM3U(text);
   localStorage.setItem('ftv_xtream',JSON.stringify({server,user,pass}));
+  localStorage.setItem('ftv_m3u',m3uUrl);
   afterLoad();
- }catch(e){ alert('Xtream login failed: '+e.message); }
+ }catch(e){ 
+  alert('Xtream API blocked by browser (CORS). Use M3U tab with URL:\n\n'+m3uUrl+'\n\nI auto-filled it for you - switch to M3U tab and click Load.'); 
+  switchTab('m3u');
+ }
+}
+
+async function loadM3UProxy(m3uUrl){
+ // try direct https first, then cors proxy
+ try{
+  const r=await fetch(m3uUrl); return await r.text();
+ }catch{
+  const proxied='https://corsproxy.io/?'+encodeURIComponent(m3uUrl);
+  const r=await fetch(proxied); return await r.text();
+ }
 }
 
 function afterLoad(){
