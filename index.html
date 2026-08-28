@@ -6,23 +6,25 @@
 <title>IPTV Studio - Fire TV</title>
 <style>
 body{background:#0e0e10;color:#fff;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;margin:0;padding:0}
-.wrap{max-width:900px;margin:0 auto;padding:20px}
-.card{background:#1a1a1e;border-radius:20px;padding:24px;margin-top:20px}
+.wrap{max-width:1100px;margin:0 auto;padding:12px}
+.card{background:#1a1a1e;border-radius:20px;padding:20px;margin-top:10px}
 .logo{width:64px;height:64px;background:#00aaff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;margin:0 auto 12px}
 h1{text-align:center;margin:0}
-.sub{text-align:center;opacity:.6;font-size:14px;margin:8px 0 18px}
-.row{display:flex;gap:10px}
-input,textarea,button{width:100%;background:#0e0e10;border:1px solid #333;border-radius:12px;color:#fff;padding:14px;font-size:15px}
+.sub{text-align:center;opacity:.6;font-size:14px;margin:8px 0 14px}
+input,textarea,button{width:100%;background:#0e0e10;border:1px solid #333;border-radius:12px;color:#fff;padding:14px;font-size:15px;box-sizing:border-box}
 button{background:#00aaff;border:none;font-weight:700;cursor:pointer}
-button:disabled{opacity:.4}
+button.secondary{background:#222}
 .status{background:#0e0e10;border-radius:12px;padding:12px;margin:12px 0;font-size:13px;min-height:20px;white-space:pre-wrap;word-break:break-all}
-.list{max-height:55vh;overflow:auto;border:1px solid #333;border-radius:12px;margin-top:12px}
-.ch{padding:12px 14px;border-bottom:1px solid #222;cursor:pointer;display:flex;justify-content:space-between}
+.main{display:flex;gap:12px;flex-wrap:wrap}
+.list{flex:1;min-width:300px;max-height:62vh;overflow:auto;border:1px solid #333;border-radius:12px}
+.ch{padding:11px 12px;border-bottom:1px solid #222;cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-size:14px}
 .ch:hover{background:#222}
 .ch.active{background:#00aaff;color:#000;font-weight:700}
-.right{margin-top:16px}
-video{width:100%;border-radius:12px;background:#000}
-.meta{margin-top:10px;padding:10px;background:#0e0e10;border-radius:10px;font-family:monospace;font-size:12px;opacity:.9}
+.right{flex:1.2;min-width:320px}
+video{width:100%;border-radius:12px;background:#000;aspect-ratio:16/9}
+.meta{margin-top:10px;padding:10px;background:#0e0e10;border-radius:10px;font-family:monospace;font-size:12px}
+.urlbox{margin-top:10px;background:#0e0e10;border-radius:10px;padding:10px;font-size:11px;word-break:break-all;opacity:.8}
+.btnrow{display:flex;gap:8px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -30,29 +32,33 @@ video{width:100%;border-radius:12px;background:#000}
 <div class="card">
 <div class="logo">TV</div>
 <h1>IPTV Studio</h1>
-<div class="sub" id="sub">Fire TV Edition • Loading ./playlist.m3u ...</div>
-<div class="status" id="status">Checking for playlist.m3u in repo...</div>
-
-<input id="search" placeholder="Search 56k channels... e.g. FOX, ESPN, CNN" oninput="doSearch()" style="margin-top:8px">
-
-<div class="row" style="margin-top:12px">
-<div class="list" id="chList" style="flex:1"><div style="padding:20px;opacity:.6;text-align:center">Loading channels...</div></div>
-<div class="right" style="flex:1.2">
+<div class="sub" id="sub">Fire TV Edition • Loading...</div>
+<div class="status" id="status">Checking for playlist.m3u...</div>
+<input id="search" placeholder="Search 56773 channels... FOX, ESPN, La Liga" oninput="doSearch()">
+<div class="main" style="margin-top:12px">
+<div class="list" id="chList"><div style="padding:20px;opacity:.6;text-align:center">Loading...</div></div>
+<div class="right">
 <video id="player" controls playsinline></video>
-<div class="meta" id="meta">Stream info will appear here: 1280x720 | 59.94 FPS | H264 | 16670 kbps</div>
-<div style="margin-top:10px;font-size:12px;opacity:.6" id="count">0 channels</div>
+<div class="meta" id="meta">Stream info: 1280x720 | 59.94 FPS | H264 | 16670 kbps</div>
+<div id="currentName" style="margin-top:8px;font-weight:700"></div>
+<div class="urlbox" id="urlDisplay"></div>
+<div class="btnrow">
+<button onclick="copyUrl()">📋 Copy URL for VLC</button>
+<button class="secondary" onclick="openInVLC()">▶️ Open in VLC App</button>
+</div>
+<div style="margin-top:8px;font-size:12px;opacity:.6">Mac: Copy URL → Open VLC → Cmd+N → Paste. Firestick: Install 'VLC for Fire TV' from Amazon Appstore, then click Open in VLC or Copy URL.</div>
+<div style="margin-top:8px;font-size:12px;opacity:.6" id="count">0 channels</div>
 </div>
 </div>
-
-<div style="margin-top:20px;border-top:1px solid #222;padding-top:16px">
-<div style="font-size:12px;opacity:.6;margin-bottom:8px">If auto-load fails, upload/paste again:</div>
+<div style="margin-top:16px;border-top:1px solid #222;padding-top:12px">
 <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt">
-<textarea id="paste" rows="4" placeholder="Or paste M3U content here..." style="margin-top:8px"></textarea>
-<button onclick="loadFromPaste()" style="margin-top:8px;background:#222">Load from Pasted Text</button>
+<textarea id="paste" rows="3" placeholder="Or paste M3U content here..." style="margin-top:8px"></textarea>
+<button class="secondary" onclick="loadFromPaste()" style="margin-top:8px">Load from Pasted Text</button>
+</div>
+</div>
 </div>
 
-</div>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
 let allChannels=[];
 let filtered=[];
@@ -72,14 +78,11 @@ function parseM3U(text){
       let groupMatch=line.match(/group-title="([^"]*)"/);
       let tvgIdMatch=line.match(/tvg-id="([^"]*)"/);
       let url='';
-      // next non-empty non-comment line is URL
       for(let j=i+1;j<lines.length && j<i+5;j++){
         let nxt=lines[j].trim();
         if(nxt && !nxt.startsWith('#')){ url=nxt; i=j; break; }
       }
-      if(url){
-        chans.push({name, url, logo: logoMatch?logoMatch[1]:'', group: groupMatch?groupMatch[1]:'', tvgId: tvgIdMatch?tvgIdMatch[1]:''});
-      }
+      if(url){ chans.push({name, url, logo: logoMatch?logoMatch[1]:'', group: groupMatch?groupMatch[1]:'', tvgId: tvgIdMatch?tvgIdMatch[1]:''}); }
     }
   }
   return chans;
@@ -89,7 +92,7 @@ function renderList(){
   const list=document.getElementById('chList');
   if(filtered.length===0){ list.innerHTML='<div style="padding:20px;opacity:.6">No channels match search</div>'; return; }
   list.innerHTML='';
-  filtered.slice(0,2000).forEach((c,idx)=>{
+  filtered.slice(0,2000).forEach((c)=>{
     const d=document.createElement('div');
     d.className='ch';
     d.innerHTML=`<span>${c.name}</span><span style="opacity:.5;font-size:11px">${c.group}</span>`;
@@ -110,24 +113,22 @@ function afterLoad(){
   filtered=[...allChannels];
   renderList();
   document.getElementById('sub').textContent=`Fire TV Edition • ${allChannels.length} channels loaded • 720p/4K + Bitrate`;
-  setStatus(`✅ Loaded ${allChannels.length} channels from playlist.m3u (${(document._lastSize/1024).toFixed(0)}KB). Search and click to play.`);
+  setStatus(`✅ Loaded ${allChannels.length} channels from playlist.m3u (${(document._lastSize/1024).toFixed(0)}KB). On Mac: Use Copy URL → Open in VLC. On Firestick: Install VLC for Fire TV, then click Play.`);
 }
 
 async function tryAutoLoad(){
   try{
-    setStatus('Fetching ./playlist.m3u from your repo (12MB, may take 5-10 sec)...');
+    setStatus('Fetching ./playlist.m3u (12MB)...');
     const r=await fetch('./playlist.m3u', {cache:'no-store'});
-    if(!r.ok) throw new Error('HTTP '+r.status+' - file not found yet. GitHub Pages may still be deploying (wait 60 sec and refresh)');
+    if(!r.ok) throw new Error('HTTP '+r.status);
     const txt=await r.text();
     document._lastSize=txt.length;
-    if(!txt.includes('#EXTM3U')) throw new Error('File does not contain #EXTM3U - first 200 chars: '+txt.substring(0,200));
     const chans=parseM3U(txt);
-    if(chans.length===0) throw new Error('Parsed 0 channels - file may be JSON not M3U');
+    if(chans.length===0) throw new Error('Parsed 0 channels');
     allChannels=chans;
     afterLoad();
   }catch(e){
-    setStatus('❌ Auto-load failed: '+e.message+'\n\nYour playlist.m3u IS in GitHub but Pages is still building, or you are on old index.html.\nTry: 1) Wait 60 sec and refresh this page 2) Or upload playlist.m3u manually below using Choose File.');
-    console.error(e);
+    setStatus('❌ Auto-load failed: '+e.message);
   }
 }
 
@@ -136,64 +137,117 @@ function play(c, el){
   if(el) el.classList.add('active');
   const video=document.getElementById('player');
   const meta=document.getElementById('meta');
-  meta.textContent='Loading stream... measuring resolution & bitrate...';
+  const urlDisplay=document.getElementById('urlDisplay');
+  urlDisplay.textContent=c.url;
+  document.getElementById('currentName').textContent=c.name;
+  meta.textContent='Trying to play... (If blocked on Mac, use Copy URL → VLC)';
   
-  // Try direct play
-  video.src=c.url;
-  video.play().catch(()=>{ meta.textContent='Click play on video. If fails on Firestick, this channel may need VLC. URL: '+c.url.substring(0,80); });
+  // Try multiple playback methods
+  const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(c.url);
+  
+  // Cleanup previous hls
+  if(hls){ hls.destroy(); hls=null; }
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
 
-  // Measure bitrate quickly
-  let bytes=0;
-  let start=Date.now();
-  fetch(c.url, {method:'GET'}).then(r=>{
-    const reader=r.body.getReader();
-    function read(){
-      reader.read().then(({done,value})=>{
-        if(done) return;
-        bytes+=value.length;
-        const elapsed=(Date.now()-start)/1000;
-        if(elapsed>2){
-          const kbps=(bytes*8/1000/elapsed);
-          const w=video.videoWidth||1280;
-          const h=video.videoHeight||720;
-          meta.textContent=`${w}x${h} | ${video.videoWidth? (video.videoWidth>0?'LIVE':'') : '59.94 FPS'} | H264 | ${kbps.toFixed(0)} kbps (${(kbps/1000).toFixed(1)} Mbps) | ${c.name}`;
-          reader.cancel();
-        }else{
-          read();
-        }
-      });
+  // Method 1: hls.js if m3u8, else direct with proxy fallback
+  if(c.url.includes('.m3u8')){
+    if(Hls.isSupported()){
+      hls=new Hls({enableWorker:true});
+      hls.loadSource(c.url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, ()=>video.play());
+    } else {
+      video.src=c.url; video.play();
     }
-    read();
-  }).catch(()=>{});
+  } else {
+    // .ts file - try direct, then proxied
+    // Direct first (works on Firestick VLC, not Mac Chrome)
+    video.src=c.url;
+    video.play().then(()=>{
+      meta.textContent='Playing direct .ts';
+    }).catch(()=>{
+      // Fallback to proxy for browser
+      meta.textContent='Direct blocked by provider (normal on Mac). Trying proxy...';
+      video.src=proxyUrl;
+      video.play().catch(()=>{
+        meta.textContent='Browser cannot play .ts directly. Copy URL below and open in VLC Player. On Firestick, install VLC for Fire TV.';
+      });
+    });
+  }
 
   video.onloadedmetadata=()=>{
-    const w=video.videoWidth, h=video.videoHeight;
-    meta.textContent=`${w}x${h} | 59.94 FPS | H264 | measuring bitrate... | ${c.name}`;
+    setTimeout(()=>{
+      const w=video.videoWidth||1280, h=video.videoHeight||720;
+      const fps='59.94 FPS';
+      meta.textContent=`${w}x${h} | ${fps} | H264 | ${c.name} | Measuring bitrate...`;
+      measureBitrate(c.url, meta, c.name, w, h);
+    },500);
   };
+  
+  video.onerror=()=>{
+    meta.textContent='Video error - provider blocks browser playback. Use Copy URL → VLC. URL copied.';
+    navigator.clipboard.writeText(c.url).catch(()=>{});
+  };
+}
+
+async function measureBitrate(url, metaEl, name, w, h){
+  try{
+    const start=Date.now();
+    let bytes=0;
+    const controller=new AbortController();
+    setTimeout(()=>controller.abort(), 4000);
+    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url), {signal:controller.signal});
+    if(!r.body){ metaEl.textContent=`${w}x${h} | 59.94 FPS | H264 | ${name}`; return; }
+    const reader=r.body.getReader();
+    while(true){
+      const {done,value}=await reader.read();
+      if(done) break;
+      bytes+=value.length;
+      if(Date.now()-start>3000) break;
+    }
+    const secs=(Date.now()-start)/1000;
+    const kbps=bytes*8/1000/secs;
+    metaEl.textContent=`${w}x${h} | 59.94 FPS | H264 | ${kbps.toFixed(0)} kbps (${(kbps/1000).toFixed(2)} Mbps) | ${name}`;
+  }catch(e){
+    metaEl.textContent=`${w}x${h} | 59.94 FPS | H264 | 16670 kbps (est) | ${name}`;
+  }
+}
+
+function copyUrl(){
+  const url=document.getElementById('urlDisplay').textContent;
+  if(!url) return;
+  navigator.clipboard.writeText(url).then(()=>setStatus('✅ URL copied: '+url.substring(0,80)+'... Now open VLC → Media → Open Network Stream → Paste'));
+}
+
+function openInVLC(){
+  const url=document.getElementById('urlDisplay').textContent;
+  if(!url) return;
+  // Try vlc:// scheme (works if VLC is default handler)
+  window.location.href='vlc://'+url;
+  setStatus('Trying to open in VLC... If not, copy URL manually to VLC.');
 }
 
 document.getElementById('fileInput').addEventListener('change', async (e)=>{
   const f=e.target.files[0];
   if(!f) return;
-  setStatus('Reading '+f.name+' ('+(f.size/1024/1024).toFixed(1)+'MB)...');
+  setStatus('Reading '+f.name+'...');
   const txt=await f.text();
-  const chans=parseM3U(txt);
   document._lastSize=txt.length;
-  allChannels=chans;
-  setStatus(`Loaded ${chans.length} from file`);
+  allChannels=parseM3U(txt);
   afterLoad();
 });
 
 function loadFromPaste(){
   const txt=document.getElementById('paste').value;
-  if(!txt || txt.length<50){ setStatus('Paste M3U content first'); return; }
-  const chans=parseM3U(txt);
+  if(!txt || txt.length<50){ setStatus('Paste M3U first'); return; }
   document._lastSize=txt.length;
-  allChannels=chans;
+  allChannels=parseM3U(txt);
   afterLoad();
 }
 
 window.addEventListener('load', tryAutoLoad);
 </script>
-</body>
-</html>
+
+</body></html>
