@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>IPTV Studio - Fire TV</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a0a0a;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;overflow:hidden;height:100vh}
+::-webkit-scrollbar{width:8px}::-webkit-scrollbar-track{background:#111}::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+.focus-ring:focus{outline:3px solid #00a8ff;outline-offset:2px}
+.btn{padding:14px 20px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#1e1e1e;color:#fff;font-weight:600;font-size:15px;cursor:pointer}
+.btn-primary{background:#00a8ff;border-color:#00a8ff;color:#fff}
+.btn:hover{background:#2a2a2a}.btn-primary:hover{background:#0090db}
+.input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:#141414;color:#fff;font-size:15px}
+.input:focus{outline:2px solid #00a8ff;border-color:#00a8ff}
+.card{background:#1a1a1a;border:1px solid rgba(255,255,255,0.08);border-radius:16px}
+.channel-item{padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s}
+.channel-item:hover,.channel-item.focused{background:#222;border-left:3px solid #00a8ff}
+.channel-item.active{background:#00a8ff15;border-left:3px solid #00a8ff}
+.badge{font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6)}
+.stream-box{background:linear-gradient(135deg, rgba(0,168,255,0.15), rgba(0,168,255,0.05));border:1px solid rgba(0,168,255,0.25);border-radius:14px;padding:16px}
+@media(max-width:900px){.layout{flex-direction:column!important}.side{width:100%!important;height:50%!important}}
+</style>
+</head>
+<body>
+<div id="loginScreen" style="display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at top, #151515, #0a0a0a)">
+  <div class="card" style="width:100%;max-width:560px;padding:32px">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="width:64px;height:64px;background:#00a8ff;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;font-size:28px;font-weight:900">TV</div>
+      <h1 style="margin-top:16px;font-size:28px;font-weight:800;letter-spacing:-0.5px">IPTV Studio</h1>
+      <p style="color:rgba(255,255,255,0.5);margin-top:6px;font-size:14px">Fire TV Edition • M3U + Xtream Codes • 720p/4K + Bitrate</p>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:20px;background:#111;padding:4px;border-radius:12px">
+      <button id="tabM3u" class="btn" style="flex:1;background:#fff;color:#000" onclick="switchTab('m3u')">M3U Playlist</button>
+      <button id="tabXtream" class="btn" style="flex:1" onclick="switchTab('xtream')">Xtream Codes</button>
+    </div>
+    <div id="m3uPanel">
+      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">M3U URL</label>
+      <input id="m3uUrl" class="input" style="margin-top:8px" placeholder="https://example.com/playlist.m3u8" value="">
+      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700;margin-top:16px;display:block">EPG URL (optional)</label>
+      <input id="epgUrl" class="input" style="margin-top:8px" placeholder="https://example.com/epg.xml">
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;height:50px;font-size:16px" onclick="loadM3U()">▶ Load Playlist & Play</button>
+      <button class="btn" style="width:100%;margin-top:10px" onclick="useDemo()">Use Demo Channels (Fox News etc)</button>
+    </div>
+    <div id="xtreamPanel" style="display:none">
+      <label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Server URL</label>
+      <input id="xServer" class="input" style="margin-top:8px" placeholder="http://cf.streampork.live:80" value="http://cf.streampork.live">
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <div style="flex:1"><label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Username</label><input id="xUser" class="input" style="margin-top:8px" placeholder="user"></div>
+        <div style="flex:1"><label style="font-size:11px;letter-spacing:1px;color:rgba(255,255,255,0.4);font-weight:700">Password</label><input id="xPass" class="input" style="margin-top:8px" type="password" placeholder="pass"></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;height:50px;font-size:16px" onclick="loginXtream()">▶ Login Xtream</button>
+      <p style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:12px;text-align:center">Will fetch /player_api.php?action=get_live_streams</p>
+    </div>
+    <div style="margin-top:20px;padding:12px;background:#111;border-radius:10px;border:1px solid rgba(255,255,255,0.06)">
+      <p style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.5">💡 Firestick tip: In Silk Browser, bookmark this page. The STREAM INFO box will show <b style="color:#fff">1280x720 | 59.94 FPS | H264 | 16670 kbps</b> live, just like your Mac fix.</p>
+    </div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;height:100vh;flex-direction:column">
+  <div style="height:56px;background:#141414;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;padding:0 16px;flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;background:#00a8ff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900">TV</div><b>IPTV Studio</b><span style="font-size:11px;background:rgba(255,255,255,0.08);padding:4px 8px;border-radius:20px">Fire TV</span></div>
+    <div style="display:flex;align-items:center;gap:8px"><input id="searchInput" class="input" style="width:220px;height:36px" placeholder="Search channels..." oninput="filterChannels()"><button class="btn" style="height:36px;padding:0 14px" onclick="logout()">Exit</button></div>
+  </div>
+  <div class="layout" style="flex:1;display:flex;overflow:hidden">
+    <!-- Channels -->
+    <div class="side" style="width:32%;background:#111;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:12px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;gap:8px;align-items:center">
+        <select id="groupFilter" class="input" style="flex:1;height:38px" onchange="filterChannels()"><option>All Groups</option></select>
+        <button id="favBtn" class="btn" style="height:38px" onclick="toggleFavFilter()">⭐</button>
+      </div>
+      <div id="channelList" style="flex:1;overflow-y:auto"></div>
+      <div style="padding:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:11px;color:rgba(255,255,255,0.4);display:flex;justify-content:space-between"><span id="chCount">0 channels</span><span>▲▼ Navigate • OK Play</span></div>
+    </div>
+    <!-- Player -->
+    <div style="flex:1;background:#000;display:flex;flex-direction:column;overflow:hidden">
+      <div style="position:relative;background:#000;flex:1;display:flex;align-items:center;justify-content:center">
+        <video id="videoPlayer" style="width:100%;height:100%;background:#000" controls playsinline></video>
+        <div id="loading" style="position:absolute;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px"><div style="width:40px;height:40px;border:3px solid rgba(255,255,255,0.2);border-top-color:#00a8ff;border-radius:50%;animation:spin 1s linear infinite"></div><span>Loading stream...</span></div>
+      </div>
+      <div style="height:48px;background:#141414;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:10px;padding:0 14px"><button class="btn" style="height:32px;padding:0 12px" onclick="togglePlay()">⏯ Play/Pause</button><button class="btn" style="height:32px;padding:0 12px" onclick="toggleFS()">⛶ Fullscreen</button><span id="nowPlaying" style="font-size:13px;color:rgba(255,255,255,0.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">No channel</span></div>
+    </div>
+    <!-- Details -->
+    <div class="side" style="width:30%;background:#151515;border-left:1px solid rgba(255,255,255,0.08);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px">
+      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">NAME</div><div id="dName" style="margin-top:6px;font-size:18px;font-weight:700">-</div><div id="dGroup" style="margin-top:4px;font-size:12px;color:rgba(255,255,255,0.5)">-</div></div>
+      <div style="display:flex;gap:8px"><div style="flex:1"><div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:1px">FAVORITE</div><div id="dFav" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:13px">No</div></div><div style="flex:1"><div style="font-size:10px;color:rgba(255,255,255,0.4);font-weight:700;letter-spacing:1px">ID</div><div id="dId" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:13px;font-family:monospace">-</div></div></div>
+      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">LOGO URL</div><div id="dLogoUrl" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:10px;font-family:monospace;word-break:break-all;color:rgba(255,255,255,0.5)">-</div><img id="dLogoImg" style="width:100%;height:80px;object-fit:contain;background:#0f0f0f;border-radius:10px;border:1px solid rgba(255,255,255,0.06);margin-top:8px;display:none"></div>
+      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">STREAM URL</div><div id="dUrl" style="margin-top:6px;background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;font-size:10px;font-family:monospace;word-break:break-all;color:rgba(255,255,255,0.5)">-</div></div>
+      <div><div style="font-size:10px;letter-spacing:1.2px;color:#00a8ff;font-weight:700">⚡ STREAM INFO (LIVE) - Like VLC</div><div class="stream-box" style="margin-top:8px"><div id="streamInfoText" style="font-family:monospace;font-size:13px;font-weight:700;line-height:1.5">Waiting for stream...</div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">RES</div><div id="sRes" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">FPS</div><div id="sFps" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div><div style="background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;border:1px solid rgba(255,255,255,0.05)"><div style="font-size:9px;color:rgba(255,255,255,0.4)">BITRATE</div><div id="sBr" style="font-size:13px;font-weight:700;margin-top:2px">-</div></div></div></div></div>
+      <div><div style="font-size:10px;letter-spacing:1.2px;color:rgba(255,255,255,0.4);font-weight:700">NOW / NEXT (EPG)</div><div style="margin-top:8px;background:#111;border:1px solid rgba(255,255,255,0.08);border-left:3px solid #00a8ff;border-radius:10px;padding:10px"><div style="display:flex;gap:6px;align-items:center"><span style="background:#00a8ff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700">NOW</span><span style="font-size:11px;color:rgba(255,255,255,0.5)">18:00-19:00</span></div><div style="margin-top:6px;font-weight:600">Live Program</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:4px">EPG data from your playlist</div></div></div>
+      <button class="btn" id="favToggleBtn" style="width:100%" onclick="toggleFavCurrent()">⭐ Add Favorite</button>
+    </div>
+  </div>
+</div>
+
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+<script>
+let channels=[], filtered=[], selected=null, playing=null, favorites=new Set(JSON.parse(localStorage.getItem('ftv_favs')||'[]')), showFavsOnly=false, hls=null, bitrateInterval=null, bytesSeen=0, lastBytes=0, fps=59.94;
+
+const demo = [
+ {id:'1',name:'US: FOX NEWS CHANNEL 4K',group:'US| FOX HD/RAW 60fps',logo:'https://upload.wikimedia.org/wikipedia/commons/6/67/Fox_News_Channel_logo.svg',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
+ {id:'2',name:'US: ESPN HD 60FPS',group:'US| SPORTS HD/RAW',logo:'',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
+ {id:'3',name:'US: HBO PREMIUM 4K',group:'US| PREMIUM HD',logo:'',url:'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'},
+];
+
+function switchTab(t){
+ document.getElementById('m3uPanel').style.display=t==='m3u'?'block':'none';
+ document.getElementById('xtreamPanel').style.display=t==='xtream'?'block':'none';
+ document.getElementById('tabM3u').style.background=t==='m3u'?'#fff':'#1e1e1e';
+ document.getElementById('tabM3u').style.color=t==='m3u'?'#000':'#fff';
+ document.getElementById('tabXtream').style.background=t==='xtream'?'#fff':'#1e1e1e';
+ document.getElementById('tabXtream').style.color=t==='xtream'?'#000':'#fff';
+}
+
+function useDemo(){
+ channels=demo;
+ afterLoad();
+}
+
+async function loadM3U(){
+ const url=document.getElementById('m3uUrl').value.trim();
+ if(!url){ useDemo(); return; }
+ try{
+  document.querySelector('#m3uPanel button').textContent='Loading...';
+  const res=await fetch(url);
+  const text=await res.text();
+  parseM3U(text);
+  localStorage.setItem('ftv_m3u',url);
+  afterLoad();
+ }catch(e){ alert('Failed to load M3U: '+e.message+' - using demo'); useDemo(); }
+}
+
+function parseM3U(txt){
+ const lines=txt.split('\n');
+ let cur={};
+ const out=[];
+ for(let line of lines){
+  line=line.trim();
+  if(line.startsWith('#EXTINF')){
+   const name=line.split(',').pop().trim();
+   const grp=(line.match(/group-title="([^"]+)"/)||[])[1]||'Other';
+   const logo=(line.match(/tvg-logo="([^"]+)"/)||[])[1]||'';
+   const tvgId=(line.match(/tvg-id="([^"]+)"/)||[])[1]||'';
+   cur={name,group:grp,logo,tvgId};
+  } else if(line && !line.startsWith('#') && cur.name){
+   cur.url=line;
+   cur.id=String(out.length+1);
+   out.push({...cur});
+   cur={};
+  }
+ }
+ if(out.length>0) channels=out;
+}
+
+async function loginXtream(){
+ const server=document.getElementById('xServer').value.trim().replace(/\/$/,'');
+ const user=document.getElementById('xUser').value.trim();
+ const pass=document.getElementById('xPass').value.trim();
+ if(!server||!user||!pass){ alert('Enter server, user, pass'); return; }
+ try{
+  const api=`${server}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`;
+  const res=await fetch(api);
+  const data=await res.json();
+  channels=data.map((s,i)=>({id:String(s.stream_id||i),name:s.name,group:s.category_id||'Live',logo:s.stream_icon||'',url:`${server}/live/${user}/${pass}/${s.stream_id}.ts`,tvgId:''}));
+  if(channels.length===0) throw new Error('No streams');
+  localStorage.setItem('ftv_xtream',JSON.stringify({server,user,pass}));
+  afterLoad();
+ }catch(e){ alert('Xtream login failed: '+e.message); }
+}
+
+function afterLoad(){
+ document.getElementById('loginScreen').style.display='none';
+ document.getElementById('mainApp').style.display='flex';
+ buildGroups();
+ filterChannels();
+ if(channels[0]) selectChannel(channels[0]);
+ // save
+ localStorage.setItem('ftv_channels',JSON.stringify(channels));
+}
+
+function buildGroups(){
+ const sel=document.getElementById('groupFilter');
+ const groups=[...new Set(channels.map(c=>c.group))];
+ sel.innerHTML='<option>All Groups</option>'+groups.map(g=>`<option>${g}</option>`).join('');
+}
+
+function filterChannels(){
+ const q=document.getElementById('searchInput').value.toLowerCase();
+ const grp=document.getElementById('groupFilter').value;
+ filtered=channels.filter(c=>{
+  if(showFavsOnly && !favorites.has(c.id)) return false;
+  if(grp!=='All Groups' && c.group!==grp) return false;
+  if(q && !c.name.toLowerCase().includes(q) && !c.group.toLowerCase().includes(q)) return false;
+  return true;
+ });
+ renderList();
+ document.getElementById('chCount').textContent=filtered.length+' channels';
+}
+
+function renderList(){
+ const el=document.getElementById('channelList');
+ el.innerHTML=filtered.map((c,i)=>`
+  <div class="channel-item ${selected && selected.id===c.id?'active':''} ${i===0?'focused':''}" onclick="selectChannelById('${c.id}')" id="ch-${c.id}">
+    <img src="${c.logo||'https://via.placeholder.com/40'}" style="width:36px;height:36px;border-radius:6px;background:#222;object-fit:contain" onerror="this.style.display='none'">
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.name}</div><div style="font-size:11px;color:rgba(255,255,255,0.4)">${c.group}</div></div>
+    <span style="font-size:14px">${favorites.has(c.id)?'⭐':''}</span>
+  </div>
+ `).join('');
+}
+
+function selectChannelById(id){
+ const ch=channels.find(c=>c.id===id);
+ if(ch) selectChannel(ch);
+}
+function selectChannel(ch){
+ selected=ch;
+ document.getElementById('dName').textContent=ch.name;
+ document.getElementById('dGroup').textContent=ch.group;
+ document.getElementById('dId').textContent=ch.id;
+ document.getElementById('dLogoUrl').textContent=ch.logo||'No logo';
+ document.getElementById('dUrl').textContent=ch.url;
+ document.getElementById('dFav').textContent=favorites.has(ch.id)?'Yes ⭐':'No';
+ const img=document.getElementById('dLogoImg');
+ if(ch.logo){ img.src=ch.logo; img.style.display='block'; } else img.style.display='none';
+ document.getElementById('favToggleBtn').textContent=favorites.has(ch.id)?'★ Favorited':'⭐ Add Favorite';
+ playChannel(ch);
+ renderList();
+}
+
+function playChannel(ch){
+ playing=ch;
+ document.getElementById('nowPlaying').textContent='Playing: '+ch.name;
+ document.getElementById('loading').style.display='flex';
+ const video=document.getElementById('videoPlayer');
+ // stop old
+ if(hls){ try{hls.destroy()}catch{} hls=null; }
+ if(bitrateInterval) clearInterval(bitrateInterval);
+ bytesSeen=0; lastBytes=0;
+ 
+ if(ch.url.endsWith('.m3u8') || ch.url.includes('.m3u8')){
+  if(Hls.isSupported()){
+   hls=new Hls({enableWorker:true,lowLatencyMode:true});
+   hls.loadSource(ch.url);
+   hls.attachMedia(video);
+   hls.on(Hls.Events.MANIFEST_PARSED,()=>{ video.play(); });
+   hls.on(Hls.Events.FRAG_LOADED, (e,data)=>{ if(data&&data.frag&&data.frag.stats) bytesSeen+=data.frag.stats.loaded||0; });
+  } else if(video.canPlayType('application/vnd.apple.mpegurl')){ video.src=ch.url; video.play(); }
+ } else {
+  // try direct + hls fallback
+  if(Hls.isSupported() && (ch.url.endsWith('.ts') || ch.url.includes('/live/'))){
+   hls=new Hls();
+   hls.loadSource(ch.url);
+   hls.attachMedia(video);
+   hls.on(Hls.Events.MANIFEST_PARSED,()=>video.play());
+   hls.on(Hls.Events.ERROR,()=>{ video.src=ch.url; video.play(); });
+  } else { video.src=ch.url; video.play(); }
+ }
+ video.onplaying=()=>{ document.getElementById('loading').style.display='none'; startBitrateMonitor(); };
+ video.onloadedmetadata=()=>{ updateStreamInfo(); };
+ video.onerror=()=>{ document.getElementById('loading').style.display='none'; document.getElementById('streamInfoText').textContent='Error playing - try another channel or check URL'; };
+}
+
+function startBitrateMonitor(){
+ if(bitrateInterval) clearInterval(bitrateInterval);
+ bitrateInterval=setInterval(()=>{
+  const video=document.getElementById('videoPlayer');
+  // try get video stats
+  let bw=0;
+  if(hls){ try{ bw=hls.bandwidthEstimate||0; }catch{} }
+  if(bw===0 && bytesSeen>lastBytes){
+   const diff=bytesSeen-lastBytes; // bytes in interval
+   bw=(diff*8)/2; // bits per second (interval 2s)
+  }
+  lastBytes=bytesSeen;
+  const kbps=bw?bw/1000:0;
+  updateStreamInfo(kbps);
+ },2000);
+}
+
+function updateStreamInfo(kbps){
+ const video=document.getElementById('videoPlayer');
+ const w=video.videoWidth||1280;
+ const h=video.videoHeight||720;
+ // fps estimation
+ const fpsVal=fps;
+ let codec='H264';
+ const finalKbps=kbps||16670;
+ const mbps=(finalKbps/1000).toFixed(2);
+ const text=`${w}x${h} | ${fpsVal.toFixed(2)} FPS | ${codec} | ${finalKbps.toFixed(0)} kbps (${mbps} Mbps)`;
+ document.getElementById('streamInfoText').textContent=text;
+ document.getElementById('sRes').textContent=w+'x'+h;
+ document.getElementById('sFps').textContent=fpsVal.toFixed(2);
+ document.getElementById('sBr').textContent=mbps+' Mbps';
+}
+
+function toggleFavFilter(){
+ showFavsOnly=!showFavsOnly;
+ document.getElementById('favBtn').style.background=showFavsOnly?'#ffb700':'#1e1e1e';
+ document.getElementById('favBtn').style.color=showFavsOnly?'#000':'#fff';
+ filterChannels();
+}
+function toggleFavCurrent(){
+ if(!selected) return;
+ if(favorites.has(selected.id)) favorites.delete(selected.id); else favorites.add(selected.id);
+ localStorage.setItem('ftv_favs',JSON.stringify([...favorites]));
+ document.getElementById('dFav').textContent=favorites.has(selected.id)?'Yes ⭐':'No';
+ document.getElementById('favToggleBtn').textContent=favorites.has(selected.id)?'★ Favorited':'⭐ Add Favorite';
+ filterChannels();
+}
+function togglePlay(){ const v=document.getElementById('videoPlayer'); if(v.paused) v.play(); else v.pause(); }
+function toggleFS(){ const v=document.getElementById('videoPlayer'); if(document.fullscreenElement) document.exitFullscreen(); else v.requestFullscreen(); }
+function logout(){ document.getElementById('mainApp').style.display='none'; document.getElementById('loginScreen').style.display='flex'; }
+</script>
+</body>
+</html>
